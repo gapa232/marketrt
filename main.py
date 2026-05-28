@@ -73,9 +73,14 @@ def cmd_call():
 
 
 def cmd_eval():
-    from agent.evaluation import ConversationEvaluator, ConversationTurn
+    from agent.evaluation import ConversationEvaluator, MockEvaluator, ConversationTurn
 
-    evaluator = ConversationEvaluator()
+    if os.getenv("ANTHROPIC_API_KEY"):
+        evaluator = ConversationEvaluator()
+        print("Mode: LLM-as-Judge (Claude)\n")
+    else:
+        evaluator = MockEvaluator()
+        print("Mode: mock/heuristic (no ANTHROPIC_API_KEY found)\n")
 
     sample_conversations = [
         [

@@ -1,7 +1,7 @@
 from .config import AgentConfig, LLMConfig, VoiceSettings
 from .system_prompt import get_system_prompt
 from .tools import dispatch_tool, HandoffResult, HandoffType
-from .evaluation import ConversationEvaluator, ConversationTurn, EvaluationResult, SessionMetrics
+from .evaluation import ConversationEvaluator, MockEvaluator, ConversationTurn, EvaluationResult, SessionMetrics
 
 __all__ = [
     "AgentConfig",
@@ -12,6 +12,7 @@ __all__ = [
     "HandoffResult",
     "HandoffType",
     "ConversationEvaluator",
+    "MockEvaluator",
     "ConversationTurn",
     "EvaluationResult",
     "SessionMetrics",

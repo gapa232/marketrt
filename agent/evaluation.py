@@ -116,17 +116,68 @@ Also provide:
 - reasoning: one sentence explaining your judgment
 
 Respond ONLY with valid JSON matching this schema:
-{
+{{
   "hallucination_kb": boolean,
   "solved_user_inquiry": boolean,
   "positive_interaction": boolean,
   "confidence": float,
   "reasoning": string
-}
+}}
 
 === CONVERSATION ===
 {conversation}
 """
+
+
+class MockEvaluator:
+    """
+    Heurystyczny ewaluator offline (bez API).
+    Używany gdy ANTHROPIC_API_KEY niedostępny – tryb demo/CI.
+    """
+
+    _HALLUCINATION_SIGNALS = ["microsoft", "google tts", "azure", "openai whisper"]
+    _UNSOLVED_SIGNALS = ["i don't know", "i cannot", "i'm unable", "not sure"]
+    _NEGATIVE_SIGNALS = ["sorry", "unfortunately", "i apologize", "can't help"]
+
+    def evaluate(self, turns: list[ConversationTurn]) -> EvaluationResult:
+        if not any(t.role == "user" and t.content.strip() for t in turns):
+            return EvaluationResult(
+                hallucination_kb=False,
+                solved_user_inquiry=False,
+                positive_interaction=False,
+                confidence=1.0,
+                reasoning="Empty call – user did not ask a question.",
+            )
+
+        agent_text = " ".join(
+            t.content.lower() for t in turns if t.role == "agent"
+        )
+
+        hallucination = any(s in agent_text for s in self._HALLUCINATION_SIGNALS)
+        unsolved = any(s in agent_text for s in self._UNSOLVED_SIGNALS)
+        negative = any(s in agent_text for s in self._NEGATIVE_SIGNALS)
+
+        return EvaluationResult(
+            hallucination_kb=hallucination,
+            solved_user_inquiry=not unsolved,
+            positive_interaction=not negative,
+            confidence=0.65,
+            reasoning="[mock] Heuristic evaluation – no LLM API available.",
+        )
+
+    def batch_evaluate(
+        self,
+        conversations: list[list[ConversationTurn]],
+        session_id: str = "batch",
+    ) -> tuple[list[EvaluationResult], SessionMetrics]:
+        metrics = SessionMetrics(session_id=session_id)
+        results = []
+        for turns in conversations:
+            is_empty = not any(t.role == "user" and t.content.strip() for t in turns)
+            result = self.evaluate(turns)
+            metrics.update(result, is_empty_call=is_empty)
+            results.append(result)
+        return results, metrics
 
 
 class ConversationEvaluator:
